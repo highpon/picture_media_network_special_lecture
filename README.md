@@ -11,6 +11,10 @@ go run ./main.go -lecture 2 -inputPath ./data_2/data_2/data/ -outputPath ./data_
 go run ./main.go -lecture 3 -inputPath ./data_3 -outputPath ./data_3/output/
 ```
 
+## Lecture4 Exammple
+```
+go run ./main.go -lecture 4 -inputPath ./data_4/data-4 -outputPath ./data_4/data-4/output/```
+
 
 
 
