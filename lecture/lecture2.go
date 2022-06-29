@@ -32,41 +32,34 @@ func Lecture2(inputDirPath, outputDirPath string) error {
 	}
 
 	for _, v := range inputFileLists {
-		baseOutputString := outputDirPath + filepath.Base(v)
+		for _, compressAlgorithm := range []string{"zstd", "br", "lz4"} {
+			fmt.Printf("圧縮アルゴリズム: %s\n", compressAlgorithm)
+			baseOutputString := outputDirPath + filepath.Base(v)
 
-		if err := createTar(v, baseOutputString); err != nil {
-			return errors.Wrap(err, "failed createTar")
+			if err := createTar(v, baseOutputString); err != nil {
+				return errors.Wrap(err, "failed createTar")
+			}
+
+			if err := compressFile(baseOutputString+".tar", compressAlgorithm); err != nil {
+				return errors.Wrap(err, "failed compressFile")
+			}
+
+			baseFile, err := os.Stat(v)
+			if err != nil {
+				return errors.Wrap(err, "failed os.Stat")
+			}
+
+			outputFile, err := os.Stat(baseOutputString + ".tar." + compressAlgorithm)
+			if err != nil {
+				return errors.Wrap(err, "failed os.Stat")
+			}
+
+			fmt.Printf("ファイル名: %s\n", baseFile.Name())
+			fmt.Printf("ファイルサイズ(byte): %d\n", baseFile.Size())
+			fmt.Printf("圧縮後サイズ(byte): %d\n", outputFile.Size())
+			fmt.Printf("割合: %f\n", float64(outputFile.Size())/float64(baseFile.Size()))
+			fmt.Println("---------------------------------------------")
 		}
-
-		// if err := compressFile(baseOutputString+".tar", "zstd"); err != nil {
-		// 	return errors.Wrap(err, "failed compressFile")
-		// }
-
-		// if err := compressFile(baseOutputString+".tar", "br"); err != nil {
-		// 	return errors.Wrap(err, "failed compressFile")
-		// }
-
-		if err := compressFile(baseOutputString+".tar", "lz4"); err != nil {
-			return errors.Wrap(err, "failed compressFile")
-		}
-
-		baseFile, err := os.Stat(v)
-		if err != nil {
-			return errors.Wrap(err, "failed os.Stat")
-		}
-
-		// outputFile, err := os.Stat(baseOutputString + ".tar." + "zstd")
-		// outputFile, err := os.Stat(baseOutputString + ".tar." + "br")
-		outputFile, err := os.Stat(baseOutputString + ".tar." + "lz4")
-		if err != nil {
-			return errors.Wrap(err, "failed os.Stat")
-		}
-
-		fmt.Printf("ファイル名: %s\n", baseFile.Name())
-		fmt.Printf("ファイルサイズ(byte): %d\n", baseFile.Size())
-		fmt.Printf("圧縮後サイズ(byte): %d\n", outputFile.Size())
-		fmt.Printf("割合: %f\n", float64(outputFile.Size())/float64(baseFile.Size()))
-		fmt.Println("---------------------------------------------")
 	}
 
 	return nil
