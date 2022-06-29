@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/andybalholm/brotli"
 	"github.com/klauspost/compress/zstd"
 	"github.com/pkg/errors"
 )
@@ -36,7 +37,11 @@ func Lecture2(inputDirPath, outputDirPath string) error {
 			return errors.Wrap(err, "failed createTar")
 		}
 
-		if err := compressFile(baseOutputString+".tar", "zstd"); err != nil {
+		// if err := compressFile(baseOutputString+".tar", "zstd"); err != nil {
+		// 	return errors.Wrap(err, "failed compressFile")
+		// }
+
+		if err := compressFile(baseOutputString+".tar", "br"); err != nil {
 			return errors.Wrap(err, "failed compressFile")
 		}
 
@@ -45,7 +50,8 @@ func Lecture2(inputDirPath, outputDirPath string) error {
 			return errors.Wrap(err, "failed os.Stat")
 		}
 
-		outputFile, err := os.Stat(baseOutputString + ".tar." + "zstd")
+		// outputFile, err := os.Stat(baseOutputString + ".tar." + "zstd")
+		outputFile, err := os.Stat(baseOutputString + ".tar." + "br")
 		if err != nil {
 			return errors.Wrap(err, "failed os.Stat")
 		}
@@ -83,6 +89,11 @@ func compressFile(inputFile, compressAlgorithm string) (retErr error) {
 	case "zstd":
 		if err := zstdCompress(f, dst); err != nil {
 			retErr = errors.Wrap(retErr, "failed Compress")
+			return
+		}
+	case "br":
+		if err := brotliCompress(f, dst); err != nil {
+			retErr = errors.Wrap(retErr, "failed brotliCompress")
 			return
 		}
 	default:
@@ -153,6 +164,16 @@ func zstdCompress(in io.Reader, out io.Writer) error {
 	if err != nil {
 		enc.Close()
 		return err
+	}
+	return enc.Close()
+}
+
+func brotliCompress(in io.Reader, out io.Writer) error {
+	enc := brotli.NewWriter(out)
+	_, err := io.Copy(enc, in)
+	if err != nil {
+		enc.Close()
+		return errors.Wrap(err, "failed brotliCompress")
 	}
 	return enc.Close()
 }
