@@ -7,4 +7,5 @@ require (
 	github.com/klauspost/compress v1.15.6
 	github.com/pierrec/lz4/v4 v4.1.15
 	github.com/pkg/errors v0.9.1
+	golang.org/x/image v0.0.0-20220617043117-41969df76e82
 )
