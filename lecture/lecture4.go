@@ -1,6 +1,7 @@
 package lecture
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -8,6 +9,7 @@ import (
 	_ "image/png"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -81,7 +83,25 @@ func Lecture4(inputDirPath, outputDirPath string) (retErr error) {
 				return
 			}
 
+			inputImageAbsPath, err := filepath.Abs(inputImagePath)
+			if err != nil {
+				retErr = errors.Wrap(err, "failed filapath.Abs")
+				return
+			}
+
+			outputFileAbsPathName, err := filepath.Abs(outputFileName)
+			if err != nil {
+				retErr = errors.Wrap(err, "failed filapath.Abs")
+				return
+			}
+
+			psnr, err := getPSNR(inputImageAbsPath, outputFileAbsPathName)
+			if err != nil {
+				retErr = errors.Wrap(err, "failed getPSNR")
+			}
+
 			fmt.Printf("%s: BPP - %f\n", outputFileName, float64(8*outputFile.Size())/float64(imgSize))
+			fmt.Printf("PSNR: %f\n", psnr)
 		}
 		fmt.Println("---------------------------------------------")
 	}
@@ -97,4 +117,23 @@ func getImageSize(imgReader io.Reader) (int, error) {
 	}
 
 	return img.Bounds().Dx() * img.Bounds().Dy(), nil
+}
+
+func getPSNR(inputFilePath, outputFilePath string) (float64, error) {
+	cmd := exec.Command("python3", "./lecture/psnr.py", "-inputPath", inputFilePath, "-outputPath", outputFilePath)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		// fmt.Printf("Stdout: %s\n", stdout.String())
+		// fmt.Printf("Stderr: %s\n", stderr.String())
+	}
+	// fmt.Printf("Stdout: %s\n", stdout.String())
+	psnr, err := strconv.ParseFloat(stdout.String(), 64)
+	if err != nil {
+		fmt.Println(err)
+		return 0, errors.Wrap(err, "failed strconv.ParseFloat")
+	}
+	return psnr, err
 }
