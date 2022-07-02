@@ -20,6 +20,11 @@ go run ./main.go -lecture 3 -inputPath ./data_3 -outputPath ./data_3/output/
 go run ./main.go -lecture 4 -inputPath ./data_4/data-4 -outputPath ./data_4/data-4/output/
 ```
 
+## Lecture5 Example
+```
+go run ./main.go -lecture 5 -inputPath ./data_5 -outputPath ./data_5/output 
+```
+
 
 
 
