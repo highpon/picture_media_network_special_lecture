@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"image/color"
 	"io"
 	"io/fs"
 	"log"
@@ -18,7 +19,15 @@ import (
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
 )
+
+type GraphParams struct {
+	Name       string
+	LineColor  color.RGBA
+	PointColor color.RGBA
+}
 
 func CheckExistDir(path string) error {
 	if d, err := os.Stat(path); os.IsNotExist(err) || d.IsDir() {
@@ -120,5 +129,24 @@ func untargz(name string, r io.Reader) ([]byte, error) {
 			return nil, fmt.Errorf("could not extract %q file from tar archive: %v", name, err)
 		}
 		return buf.Bytes(), nil
+	}
+}
+
+func CreatePlot(p *plot.Plot, point plotter.XYs, config GraphParams, savePlotFileName string, save bool) {
+	lpLine, lpPoints, err := plotter.NewLinePoints(point)
+	if err != nil {
+		panic(err)
+	}
+	lpLine.Color = config.LineColor
+	lpPoints.Shape = draw.PyramidGlyph{}
+	lpPoints.Color = config.PointColor
+
+	p.Add(lpLine, lpPoints)
+	p.Legend.Add(config.Name, lpLine, lpPoints)
+
+	if save {
+		if err := p.Save(4*vg.Inch, 4*vg.Inch, savePlotFileName); err != nil {
+			panic(err)
+		}
 	}
 }
