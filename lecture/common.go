@@ -1,13 +1,33 @@
 package lecture
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"fmt"
+	"image/color"
+	"io"
 	"io/fs"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+	"golang.org/x/image/font/opentype"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/font"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
 )
+
+type GraphParams struct {
+	Name       string
+	LineColor  color.RGBA
+	PointColor color.RGBA
+}
 
 func CheckExistDir(path string) error {
 	if d, err := os.Stat(path); os.IsNotExist(err) || d.IsDir() {
@@ -35,4 +55,98 @@ func GetFileLists(inputPath string) ([]string, error) {
 		return nil
 	})
 	return findList, err
+}
+
+func PlotInit(title, xLabel, yLabel string) *plot.Plot {
+	p := plot.New()
+
+	p.Title.Text = title
+	p.X.Label.Text = xLabel
+	p.Y.Label.Text = yLabel
+
+	p.Add(plotter.NewGrid())
+
+	return p
+}
+
+func PlotFontInit() {
+	// download font from debian
+	const url = "http://http.debian.net/debian/pool/main/f/fonts-ipafont/fonts-ipafont_00303.orig.tar.gz"
+
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatalf("could not download IPA font file: %+v", err)
+	}
+	defer resp.Body.Close()
+
+	ttf, err := untargz("IPAfont00303/ipam.ttf", resp.Body)
+	if err != nil {
+		log.Fatalf("could not untar archive: %+v", err)
+	}
+
+	fontTTF, err := opentype.Parse(ttf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	mincho := font.Font{Typeface: "Mincho"}
+	font.DefaultCache.Add([]font.Face{
+		{
+			Font: mincho,
+			Face: fontTTF,
+		},
+	})
+	if !font.DefaultCache.Has(mincho) {
+		log.Fatalf("no font %q!", mincho.Typeface)
+	}
+	plot.DefaultFont = mincho
+	plotter.DefaultFont = mincho
+}
+
+func untargz(name string, r io.Reader) ([]byte, error) {
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return nil, fmt.Errorf("could not create gzip reader: %v", err)
+	}
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	for {
+		hdr, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				return nil, fmt.Errorf("could not find %q in tar archive", name)
+			}
+			return nil, fmt.Errorf("could not extract header from tar archive: %v", err)
+		}
+
+		if hdr == nil || hdr.Name != name {
+			continue
+		}
+
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, tr)
+		if err != nil {
+			return nil, fmt.Errorf("could not extract %q file from tar archive: %v", name, err)
+		}
+		return buf.Bytes(), nil
+	}
+}
+
+func CreatePlot(p *plot.Plot, point plotter.XYs, config GraphParams, savePlotFileName string, save bool) {
+	lpLine, lpPoints, err := plotter.NewLinePoints(point)
+	if err != nil {
+		panic(err)
+	}
+	lpLine.Color = config.LineColor
+	lpPoints.Shape = draw.PyramidGlyph{}
+	lpPoints.Color = config.PointColor
+
+	p.Add(lpLine, lpPoints)
+	p.Legend.Add(config.Name, lpLine, lpPoints)
+
+	if save {
+		if err := p.Save(4*vg.Inch, 4*vg.Inch, savePlotFileName); err != nil {
+			panic(err)
+		}
+	}
 }
