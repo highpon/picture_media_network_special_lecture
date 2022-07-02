@@ -35,6 +35,11 @@ func main() {
 			log.Println(err)
 			return
 		}
+	case 5:
+		if err := lecture.Lecture5(inputPath, outputPath); err != nil {
+			log.Println(err)
+			return
+		}
 	default:
 		fmt.Println("invalid lecture number")
 	}
