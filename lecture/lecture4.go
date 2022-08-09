@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color"
 	"image/jpeg"
 	_ "image/jpeg"
 	_ "image/png"
@@ -15,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"gonum.org/v1/plot/plotter"
 )
 
 func Lecture4(inputDirPath, outputDirPath string) (retErr error) {
@@ -36,7 +38,11 @@ func Lecture4(inputDirPath, outputDirPath string) (retErr error) {
 
 	fmt.Println(inputFileLists)
 
-	for _, inputImagePath := range inputFileLists {
+	PlotFontInit()
+	p := PlotInit("RD曲線", "BPP(bit per pixel)", "PSNR")
+	colors := []color.RGBA{color.RGBA{R: 255, A: 255}, color.RGBA{G: 255, A: 255}, color.RGBA{B: 255, A: 255}, color.RGBA{R: 128, B: 128, A: 255}, color.RGBA{G: 128, B: 128, A: 255}}
+
+	for index, inputImagePath := range inputFileLists {
 		inputImageFile, err := os.Open(inputImagePath)
 		if err != nil {
 			retErr = errors.Wrap(err, "failed to os.Open")
@@ -48,7 +54,8 @@ func Lecture4(inputDirPath, outputDirPath string) (retErr error) {
 			retErr = errors.Wrap(err, "failed image.Decode")
 		}
 
-		for _, quality := range []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100} {
+		pts := make(plotter.XYs, 10)
+		for i, quality := range []int{1, 10, 20, 30, 40, 50, 60, 70, 80, 90} {
 			outputFileName := outputDirPath + strings.TrimSuffix(filepath.Base(inputImagePath), filepath.Ext(inputImagePath)) + "_q_" + strconv.Itoa(quality) + "." + "jpg"
 
 			outputImg, err := os.Create(outputFileName)
@@ -100,9 +107,12 @@ func Lecture4(inputDirPath, outputDirPath string) (retErr error) {
 				retErr = errors.Wrap(err, "failed getPSNR")
 			}
 
+			pts[i].X, pts[i].Y = float64(8*outputFile.Size())/float64(imgSize), psnr
 			fmt.Printf("%s: BPP - %f\n", outputFileName, float64(8*outputFile.Size())/float64(imgSize))
 			fmt.Printf("PSNR: %f\n", psnr)
 		}
+		CreatePlot(p, pts, GraphParams{Name: strings.TrimSuffix(filepath.Base(inputImagePath), filepath.Ext(inputImagePath)), LineColor: colors[index], PointColor: colors[index]}, outputDirPath+strings.TrimSuffix(filepath.Base(inputImagePath), filepath.Ext(inputImagePath))+"_point.png", true)
+		fmt.Println(strings.TrimSuffix(filepath.Base(inputImagePath), filepath.Ext(inputImagePath)))
 		fmt.Println("---------------------------------------------")
 	}
 
